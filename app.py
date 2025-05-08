@@ -1,3 +1,7 @@
+if st.session_state.get("force_rerun"):
+    st.session_state["force_rerun"] = False
+    st.experimental_rerun()
+    
 import streamlit as st
 import requests
 
@@ -31,7 +35,8 @@ if not st.session_state["session"]:
         if res.status_code == 200:
             st.session_state["session"] = res.json()
             st.success("Login erfolgreich!")
-            st.experimental_rerun()
+            st.session_state["force_rerun"] = True
+            st.stop()
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
 else:
