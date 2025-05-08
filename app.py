@@ -1,9 +1,9 @@
+import streamlit as st
+import requests
+
 if st.session_state.get("force_rerun"):
     st.session_state["force_rerun"] = False
     st.experimental_rerun()
-    
-import streamlit as st
-import requests
 
 # ---------- Supabase Zugang ----------
 SUPABASE_URL = st.secrets["supabase_url"]
