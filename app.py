@@ -18,6 +18,16 @@ authenticator = stauth.Authenticate(
     key="abcdef",
     cookie_expiry_days=1
 )
+
+st.write("Authenticator credentials:", {
+    "usernames": {
+        user: {
+            "email": f"{user}@example.com",
+            "name": user,
+            "password": pwd
+        } for user, pwd in users.items()
+    }
+})
 name, auth_status, username = authenticator.login("Login", "main")
 
 st.write("auth_status:", auth_status)
