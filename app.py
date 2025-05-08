@@ -17,7 +17,7 @@ HEADERS = {
 params = st.query_params
 page = params.get("page", "login")
 token = params.get("token", None)
-email = params.get("email", None)
+email = params.get("email", None")
 
 # ---------- Seiten: Login ----------
 if page == "login":
@@ -53,7 +53,6 @@ elif page == "admin" and token and email:
 
     st.title("🛠️ Admin: Testcases verwalten")
 
-    # Nutzer abrufen
     def get_all_users():
         url = f"{SUPABASE_URL}/auth/v1/users"
         res = requests.get(url, headers=HEADERS)
@@ -62,7 +61,6 @@ elif page == "admin" and token and email:
         return []
 
     def add_testcase(title, tooltip, interval_days, assigned_users):
-        # 1. Testcase speichern
         testcase_data = {
             "title": title,
             "tooltip": tooltip,
@@ -73,8 +71,6 @@ elif page == "admin" and token and email:
             return False, "Fehler beim Speichern des Testcases"
 
         testcase_id = tc_res.json()[0]["id"]
-
-        # 2. Zuweisungen speichern
         assignment_data = [{"testcase_id": testcase_id, "user_email": e} for e in assigned_users]
         assign_res = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=HEADERS, json=assignment_data)
         if assign_res.status_code not in [201, 204]:
@@ -108,6 +104,11 @@ elif page == "home" and token and email:
         st.stop()
 
     st.title(f"Willkommen, {email}!")
+
+    if email == "cj@example.com":
+        admin_link = f"/?page=admin&token={token}&email={urllib.parse.quote(email)}"
+        st.markdown(f"[🔧 Zum Adminbereich]({admin_link})", unsafe_allow_html=True)
+
     st.info("Hier kannst du deine App-Funktionen einfügen.")
 
 # ---------- Fallback ----------
