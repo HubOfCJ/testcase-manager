@@ -11,17 +11,21 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Session Handling ----------
-session = st.session_state.get("session")
-force_rerun = st.session_state.get("force_rerun", False)
+# ---------- Session initialisieren ----------
+if "session" not in st.session_state:
+    st.session_state["session"] = None
 
-if force_rerun:
-    st.session_state["force_rerun"] = False
+# ---------- Login & Rerun Logik ----------
+if "just_logged_in" not in st.session_state:
+    st.session_state["just_logged_in"] = False
+
+# ---------- Rerun sicher auslösen ----------
+if st.session_state["just_logged_in"]:
+    st.session_state["just_logged_in"] = False
     st.experimental_rerun()
-    st.stop()
 
 # ---------- Login ----------
-if session is None:
+if st.session_state["session"] is None:
     st.title("🔐 Login mit Supabase Auth")
 
     email = st.text_input("E-Mail")
@@ -35,18 +39,15 @@ if session is None:
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             st.session_state["session"] = res.json()
+            st.session_state["just_logged_in"] = True
             st.success("Login erfolgreich! Weiterleitung...")
-            st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
-    else:
-        st.info("Noch nicht eingeloggt oder Session wurde nicht erkannt.")
-
 else:
     st.sidebar.success("✅ Eingeloggt")
     st.sidebar.button("Logout", on_click=lambda: st.session_state.update({"session": None}))
 
-    user_email = session["user"]["email"]
+    user_email = st.session_state["session"]["user"]["email"]
     st.title(f"Willkommen, {user_email}!")
 
     st.info("Hier kannst du deine App-Funktionen einfügen.")
