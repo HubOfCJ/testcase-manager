@@ -12,9 +12,11 @@ HEADERS = {
 }
 
 # ---------- Session-Fix ----------
-if st.session_state.get("force_rerun"):
-    st.session_state["force_rerun"] = False
+if "force_rerun" in st.session_state and st.session_state.force_rerun:
+    st.session_state.force_rerun = False
+    st.write("🔁 App wird neu geladen...")
     st.experimental_rerun()
+    st.stop()
 
 # ---------- Session-Init ----------
 if "session" not in st.session_state:
