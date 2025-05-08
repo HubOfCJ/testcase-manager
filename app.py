@@ -18,10 +18,7 @@ authenticator = stauth.Authenticate(
     key="abcdef",
     cookie_expiry_days=1
 )
-
-login_result = authenticator.login(location="main")
-auth_status = login_result.get("authenticated") if login_result else None
-username = login_result.get("username") if login_result else None
+name, auth_status, username = authenticator.login("Login", "main")
 
 st.write("auth_status:", auth_status)
 st.write("username:", username)
