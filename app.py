@@ -1,35 +1,15 @@
 import streamlit as st
-import streamlit_authenticator as stauth
+import bcrypt
 
-# ---------- Harte Zugangsdaten ----------
-credentials = {
-    "usernames": {
-        "CJ": {
-            "email": "CJ@example.com",
-            "name": "CJ",
-            "password": "$2b$12$Yz.g9U7JZTy4fIE4R.KBJOhAnEExZjmrMu5Ba0ZhNF4FZQAs5n8MC"
-        }
-    }
-}
+# Gehashter Passwort-Hash für "CJ"
+stored_hash = "$2b$12$Yz.g9U7JZTy4fIE4R.KBJOhAnEExZjmrMu5Ba0ZhNF4FZQAs5n8MC"
 
-# ---------- Authentifizierung ----------
-authenticator = stauth.Authenticate(
-    credentials=credentials,
-    cookie_name="testcase_login",
-    key="abcdef",
-    cookie_expiry_days=1
-)
+st.title("🔐 Manuelle Auth-Diagnose")
 
-name, auth_status, username = authenticator.login("Login", "main")
-st.text_input("Was hast du getippt?", key="debug_username")
-st.write("auth_status:", auth_status)
-st.write("username:", username)
+username_input = st.text_input("Benutzername")
+password_input = st.text_input("Passwort", type="password")
 
-if auth_status:
-    st.sidebar.success(f"Eingeloggt als {username}")
-    authenticator.logout("Logout", "sidebar")
-    st.success("✅ Login erfolgreich! Du kannst jetzt Testcases oder Nutzerbereiche integrieren.")
-elif auth_status is False:
-    st.error("❌ Login fehlgeschlagen.")
-else:
-    st.info("Bitte logge dich ein.")
+if st.button("Prüfen"):
+    st.write("Eingegeben:", username_input, "/", password_input)
+    password_ok = bcrypt.checkpw(password_input.encode(), stored_hash.encode())
+    st.write("✅ Passwort korrekt?" if password_ok else "❌ Passwort falsch")
