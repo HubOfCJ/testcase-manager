@@ -11,11 +11,18 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Session State ----------
+# ---------- Session State Setup ----------
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = None
+if "just_logged_in" not in st.session_state:
+    st.session_state["just_logged_in"] = False
+
+# ---------- Sanftes Rerun nach Login ----------
+if st.session_state["just_logged_in"]:
+    st.session_state["just_logged_in"] = False
+    st.experimental_rerun()
 
 # ---------- Login ----------
 if not st.session_state["access_token"]:
@@ -34,7 +41,9 @@ if not st.session_state["access_token"]:
             data = res.json()
             st.session_state["access_token"] = data["access_token"]
             st.session_state["user_email"] = data["user"]["email"]
-            st.experimental_rerun()
+            st.session_state["just_logged_in"] = True
+            st.success("Login erfolgreich! Einen Moment...")
+            st.stop()
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
 else:
