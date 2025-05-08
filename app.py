@@ -77,9 +77,8 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=1
 )
 
-auth_status = authenticator.login(location="main")
-username = authenticator.username
-st.write("auth_status:", auth_status)  # Debug-Ausgabe
+name, auth_status, username = authenticator.login(location="main")
+st.write("auth_status:", auth_status)
 st.write("username:", username)
 
 if auth_status:
