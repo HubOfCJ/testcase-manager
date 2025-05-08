@@ -21,7 +21,7 @@ authenticator = stauth.Authenticate(
 )
 
 name, auth_status, username = authenticator.login("Login", "main")
-
+st.text_input("Was hast du getippt?", key="debug_username")
 st.write("auth_status:", auth_status)
 st.write("username:", username)
 
