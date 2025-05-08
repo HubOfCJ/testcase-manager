@@ -17,7 +17,7 @@ HEADERS = {
 params = st.query_params
 page = params.get("page", "login")
 token = params.get("token", None)
-email = params.get("email", None")
+email = params.get("email", None)
 
 # ---------- Seiten: Login ----------
 if page == "login":
