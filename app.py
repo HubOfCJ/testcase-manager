@@ -1,10 +1,6 @@
 import streamlit as st
 import requests
 
-if st.session_state.get("force_rerun"):
-    st.session_state["force_rerun"] = False
-    st.experimental_rerun()
-
 # ---------- Supabase Zugang ----------
 SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_key"]
@@ -15,7 +11,12 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Session State ----------
+# ---------- Session-Fix ----------
+if st.session_state.get("force_rerun"):
+    st.session_state["force_rerun"] = False
+    st.experimental_rerun()
+
+# ---------- Session-Init ----------
 if "session" not in st.session_state:
     st.session_state["session"] = None
 
@@ -34,7 +35,6 @@ if not st.session_state["session"]:
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             st.session_state["session"] = res.json()
-            st.success("Login erfolgreich!")
             st.session_state["force_rerun"] = True
             st.stop()
         else:
@@ -46,4 +46,4 @@ else:
     user_email = st.session_state["session"]["user"]["email"]
     st.title(f"Willkommen, {user_email}!")
 
-    st.info("Hier kannst du deine App-Funktionen wie Aufgaben, Tests usw. integrieren.")
+    st.info("Hier kannst du jetzt Aufgaben, Testcases usw. einbinden.")
