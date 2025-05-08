@@ -1,16 +1,38 @@
 import streamlit as st
-import bcrypt
+from supabase import create_client, Client
+import os
 
-# Gehashter Passwort-Hash für "CJ"
-stored_hash = "$2b$12$Yz.g9U7JZTy4fIE4R.KBJOhAnEExZjmrMu5Ba0ZhNF4FZQAs5n8MC"
+# ---------- Supabase Zugang ----------
+url = st.secrets["supabase_url"]
+key = st.secrets["supabase_key"]
+supabase: Client = create_client(url, key)
 
-st.title("🔐 Manuelle Auth-Diagnose")
+# ---------- Session State ----------
+if "session" not in st.session_state:
+    st.session_state["session"] = None
 
-username_input = st.text_input("Benutzername")
-password_input = st.text_input("Passwort", type="password")
+# ---------- Login-Formular ----------
+if not st.session_state["session"]:
+    st.title("🔐 Login mit Supabase Auth")
 
-if st.button("Prüfen"):
-    st.write("Raw password:", list(password_input))
-    st.write("Length:", len(password_input))    
-    password_ok = (password_input == "CJ")
-    st.write("✅ Passwort korrekt?" if password_ok else "❌ Passwort falsch")
+    email = st.text_input("E-Mail")
+    password = st.text_input("Passwort", type="password")
+    login = st.button("Login")
+
+    if login:
+        try:
+            auth_response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            st.session_state["session"] = auth_response
+            st.success("Login erfolgreich!")
+            st.experimental_rerun()
+        except Exception as e:
+            st.error("Login fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.")
+else:
+    st.sidebar.success("✅ Eingeloggt")
+    st.sidebar.button("Logout", on_click=lambda: st.session_state.update({"session": None}))
+    
+    user = st.session_state["session"].user
+    st.title(f"Willkommen, {user['email']}!")
+
+    # Hier kommt deine eigentliche App-Logik rein
+    st.info("Hier könntest du Testcases, Aufgaben usw. einbinden.")
