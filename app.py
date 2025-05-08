@@ -11,19 +11,17 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Session-Fix ----------
-if "force_rerun" in st.session_state and st.session_state.force_rerun:
-    st.session_state.force_rerun = False
-    st.write("🔁 App wird neu geladen...")
+# ---------- Session Handling ----------
+session = st.session_state.get("session")
+force_rerun = st.session_state.get("force_rerun", False)
+
+if force_rerun:
+    st.session_state["force_rerun"] = False
     st.experimental_rerun()
     st.stop()
 
-# ---------- Session-Init ----------
-if "session" not in st.session_state:
-    st.session_state["session"] = None
-
 # ---------- Login ----------
-if not st.session_state["session"]:
+if session is None:
     st.title("🔐 Login mit Supabase Auth")
 
     email = st.text_input("E-Mail")
@@ -38,14 +36,18 @@ if not st.session_state["session"]:
         if res.status_code == 200:
             st.session_state["session"] = res.json()
             st.session_state["force_rerun"] = True
+            st.success("Login erfolgreich! Weiterleitung...")
             st.stop()
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
+    else:
+        st.info("Noch nicht eingeloggt oder Session wurde nicht erkannt.")
+
 else:
     st.sidebar.success("✅ Eingeloggt")
     st.sidebar.button("Logout", on_click=lambda: st.session_state.update({"session": None}))
 
-    user_email = st.session_state["session"]["user"]["email"]
+    user_email = session["user"]["email"]
     st.title(f"Willkommen, {user_email}!")
 
-    st.info("Hier kannst du jetzt Aufgaben, Testcases usw. einbinden.")
+    st.info("Hier kannst du deine App-Funktionen einfügen.")
