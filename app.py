@@ -35,9 +35,8 @@ if session is None:
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             st.session_state["session"] = res.json()
-            st.session_state["force_rerun"] = True
             st.success("Login erfolgreich! Weiterleitung...")
-            st.stop()
+            st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
     else:
