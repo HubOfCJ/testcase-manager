@@ -19,7 +19,7 @@ if "user_email" not in st.session_state:
 if "just_logged_in" not in st.session_state:
     st.session_state["just_logged_in"] = False
 
-# ---------- Sanftes Rerun nach Login ----------
+# ---------- Sicherer Rerun nach Login ----------
 if st.session_state["just_logged_in"]:
     st.session_state["just_logged_in"] = False
     st.experimental_rerun()
@@ -47,11 +47,13 @@ if not st.session_state["access_token"]:
         else:
             st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
 else:
-    st.sidebar.success(f"✅ Eingeloggt als {st.session_state['user_email']}")
+    user_email = st.session_state.get("user_email", "Unbekannt")
+
+    st.sidebar.success(f"✅ Eingeloggt als {user_email}")
     if st.sidebar.button("Logout"):
         st.session_state["access_token"] = None
         st.session_state["user_email"] = None
         st.experimental_rerun()
 
-    st.title(f"Willkommen, {st.session_state['user_email']}!")
+    st.title(f"Willkommen, {user_email}!")
     st.info("Hier kannst du deine App-Funktionen einfügen.")
