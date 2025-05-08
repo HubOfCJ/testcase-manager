@@ -1,74 +1,75 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import sqlite3
+import requests
 import datetime
 
-# ---------- Konfiguration ----------
-DB_FILE = 'data.db'
-FREQUENCIES = {'weekly': 7, 'biweekly': 14, 'monthly': 30}
-
-# ---------- Datenbank Setup ----------
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, description TEXT, frequency TEXT, assigned_to TEXT, last_done TEXT)")
-    conn.commit()
-    conn.close()
-
-init_db()
+# ---------- Supabase-Zugang ----------
+SUPABASE_URL = st.secrets["supabase_url"]
+SUPABASE_KEY = st.secrets["supabase_key"]
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
 
 # ---------- Hilfsfunktionen ----------
+
 def get_users():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT username, password FROM users")
-    users = {row[0]: row[1] for row in c.fetchall()}
-    conn.close()
-    return users
+    url = f"{SUPABASE_URL}/rest/v1/users?select=username,password"
+    res = requests.get(url, headers=HEADERS)
+    if res.status_code == 200:
+        return {row['username']: row['password'] for row in res.json()}
+    return {}
 
 def add_user(username, password):
     hashed_pw = stauth.Hasher([password]).generate()[0]
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
-    conn.commit()
-    conn.close()
+    payload = {"username": username, "password": hashed_pw}
+    res = requests.post(f"{SUPABASE_URL}/rest/v1/users", headers=HEADERS, json=payload)
+    return res.status_code == 201
 
 def add_task(description, frequency, assigned_to):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT INTO tasks (description, frequency, assigned_to, last_done) VALUES (?, ?, ?, ?)",
-              (description, frequency, assigned_to, None))
-    conn.commit()
-    conn.close()
+    payload = {
+        "description": description,
+        "frequency": frequency,
+        "assigned_to": assigned_to,
+        "last_done": None
+    }
+    res = requests.post(f"{SUPABASE_URL}/rest/v1/tasks", headers=HEADERS, json=payload)
+    return res.status_code == 201
 
 def get_due_tasks(username):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    today = datetime.date.today()
-    due = []
-    c.execute("SELECT id, description, frequency, last_done FROM tasks WHERE assigned_to = ?", (username,))
-    for row in c.fetchall():
-        task_id, description, frequency, last_done = row
-        delta_days = FREQUENCIES.get(frequency, 7)
-        if not last_done or (today - datetime.date.fromisoformat(last_done)).days >= delta_days:
-            due.append({"id": task_id, "description": description})
-    conn.close()
-    return due
+    url = f"{SUPABASE_URL}/rest/v1/tasks?assigned_to=eq.{username}"
+    res = requests.get(url, headers=HEADERS)
+    tasks = []
+    if res.status_code == 200:
+        today = datetime.date.today()
+        for row in res.json():
+            freq = row["frequency"]
+            last_done = row["last_done"]
+            delta_days = {"weekly": 7, "biweekly": 14, "monthly": 30}.get(freq, 7)
+            if not last_done or (today - datetime.date.fromisoformat(last_done)).days >= delta_days:
+                tasks.append({"id": row["id"], "description": row["description"]})
+    return tasks
 
 def mark_task_done(task_id):
     today = datetime.date.today().isoformat()
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE tasks SET last_done = ? WHERE id = ?", (today, task_id))
-    conn.commit()
-    conn.close()
+    url = f"{SUPABASE_URL}/rest/v1/tasks?id=eq.{task_id}"
+    payload = {"last_done": today}
+    res = requests.patch(url, headers=HEADERS, json=payload)
+    return res.status_code == 204
 
 # ---------- Authentifizierung ----------
 users = get_users()
 authenticator = stauth.Authenticate(
-    credentials={"usernames": {user: {"email": f"{user}@example.com", "name": user, "password": pwd} for user, pwd in users.items()}},
+    credentials={
+        "usernames": {
+            user: {
+                "email": f"{user}@example.com",
+                "name": user,
+                "password": pwd
+            } for user, pwd in users.items()
+        }
+    },
     cookie_name="testcase_login",
     key="abcdef",
     cookie_expiry_days=1
@@ -86,33 +87,37 @@ if auth_status:
         st.header("Admin Bereich")
 
         # Nutzerverwaltung
-        st.subheader("Nutzer anlegen")
+        st.subheader("Neuen Nutzer anlegen")
         new_user = st.text_input("Benutzername")
         new_pass = st.text_input("Passwort", type="password")
         if st.button("Benutzer speichern"):
-            add_user(new_user, new_pass)
-            st.success("Benutzer gespeichert")
+            if add_user(new_user, new_pass):
+                st.success("Benutzer erfolgreich gespeichert.")
+            else:
+                st.error("Fehler beim Speichern des Benutzers.")
 
         # Testcases anlegen
         st.subheader("Testcase anlegen")
         desc = st.text_input("Beschreibung")
-        freq = st.selectbox("Frequenz", list(FREQUENCIES.keys()))
+        freq = st.selectbox("Frequenz", ["weekly", "biweekly", "monthly"])
         assigned_to = st.selectbox("Zuweisung an", list(users.keys()))
         if st.button("Testcase speichern"):
-            add_task(desc, freq, assigned_to)
-            st.success("Testcase gespeichert")
+            if add_task(desc, freq, assigned_to):
+                st.success("Testcase gespeichert.")
+            else:
+                st.error("Fehler beim Speichern des Testcases.")
 
     else:
         st.header(f"Deine Aufgaben, {username}")
         tasks = get_due_tasks(username)
-
         if not tasks:
             st.info("Keine offenen Aufgaben.")
         for i, task in enumerate(tasks):
-            with st.expander(task['description']):
+            with st.expander(task["description"]):
                 if st.button(f"Als erledigt markieren #{i}"):
-                    mark_task_done(task['id'])
-                    st.success("Aufgabe als erledigt markiert")
-
+                    if mark_task_done(task["id"]):
+                        st.success("Aufgabe erledigt.")
+                    else:
+                        st.error("Fehler beim Aktualisieren.")
 else:
     st.warning("Bitte logge dich ein.")
