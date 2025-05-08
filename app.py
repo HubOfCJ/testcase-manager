@@ -60,6 +60,8 @@ def mark_task_done(task_id):
 
 # ---------- Authentifizierung ----------
 users = get_users()
+st.write("Users: ", users)  # Debug-Ausgabe
+
 authenticator = stauth.Authenticate(
     credentials={
         "usernames": {
@@ -75,15 +77,16 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=1
 )
 
-st.title("Login")
 auth_status = authenticator.login(location="main")
+username = authenticator.username
+st.write("auth_status:", auth_status)  # Debug-Ausgabe
+st.write("username:", username)
 
 if auth_status:
-    username = authenticator.username
     st.sidebar.success(f"Eingeloggt als {username}")
     authenticator.logout("Logout", "sidebar")
 
-    if username == "admin":
+    if username == "CJ":
         st.header("Admin Bereich")
 
         # Nutzerverwaltung
@@ -106,7 +109,6 @@ if auth_status:
                 st.success("Testcase gespeichert.")
             else:
                 st.error("Fehler beim Speichern des Testcases.")
-
     else:
         st.header(f"Deine Aufgaben, {username}")
         tasks = get_due_tasks(username)
@@ -119,5 +121,7 @@ if auth_status:
                         st.success("Aufgabe erledigt.")
                     else:
                         st.error("Fehler beim Aktualisieren.")
+elif auth_status is False:
+    st.error("Login fehlgeschlagen. Bitte überprüfe Benutzername oder Passwort.")
 else:
-    st.warning("Bitte logge dich ein.")
+    st.info("Bitte logge dich ein.")
