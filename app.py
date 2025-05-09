@@ -192,20 +192,27 @@ if page == "admin" and token and email:
                 st.warning("Bitte alle Pflichtfelder ausfüllen.")
             else:
                 payload = {"title": title, "tooltip": tooltip, "area": area or None, "interval_weeks": interval}
-                res = requests.post(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS, json=payload)
-                if res.status_code == 201:
-                    tc_id = res.json()[0]["id"]
-                    data = [{"testcase_id": tc_id, "user_email": e} for e in assigned]
-                    headers2 = HEADERS.copy(); headers2["Prefer"] = "return=minimal"
-                    r2 = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=headers2, json=data)
-                    if r2.status_code in (201, 204):
-                        st.success("Testcase gespeichert.")
-                        st.experimental_rerun()
-                    else:
-                        st.error("Fehler bei Zuweisung.")
-                else:
-                    st.error("Fehler beim Speichern.")
+                headers_tc = HEADERS.copy()
+                headers_tc["Prefer"] = "return=representation"
 
+                res = requests.post(f"{SUPABASE_URL}/rest/v1/testcases", headers=headers_tc, json=payload)
+
+                if res.status_code == 201:
+                    try:
+                        tc_id = res.json()[0]["id"]
+                        data = [{"testcase_id": tc_id, "user_email": e} for e in assigned]
+                        headers2 = HEADERS.copy(); headers2["Prefer"] = "return=minimal"
+                        r2 = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=headers2, json=data)
+                        if r2.status_code in (201, 204):
+                            st.success("Testcase gespeichert.")
+                            st.experimental_rerun()
+                        else:
+                            st.error("Fehler bei Zuweisung.")
+                    except Exception as e:
+                        st.error("Testcase wurde erstellt, aber keine ID zurückgegeben.")
+                else:
+                    st.error("Fehler beim Speichern des Testcases.")
+                
 # ---------- Admin: Wochenvorschau ----------
 if subpage == "weeks":
     st.subheader("📅 Wochenvorschau")
