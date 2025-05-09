@@ -100,33 +100,49 @@ if page == "home" and token and email:
         admin_link = f"/?page=admin&token={token}&email={urllib.parse.quote(email)}"
         st.markdown(f"[🔧 Zum Adminbereich]({admin_link})", unsafe_allow_html=True)
 
-    testcases = get_testcases_for_week(email, year, week)
-    if not testcases:
-        st.info("Keine Testcases für diese Woche zugewiesen oder fällig.")
-    else:
-        border_style = "3px solid gold" if all_done(testcases) else "1px solid #ccc"
-        cols = st.columns(len(testcases))
-        for i, (tc, status) in enumerate(testcases):
-            bg = '#fdd' if status == 'offen' else '#dfd'
-            with cols[i]:
-                with st.container():
-                    st.markdown(f"""
-                        <div style='background-color:{bg}; padding:1em; border-radius:10px; border:{border_style}; text-align:center;'>
-                            <strong>{tc['title']}</strong><br>
-                            <span title='{tc['tooltip']}'>ℹ️</span><br><br>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    if st.button(f"Status wechseln {tc['id']}") and role != "Beobachter":
-                        data = {
-                            "testcase_id": tc['id'],
-                            "user_email": email,
-                            "year": year,
-                            "calendar_week": week,
-                            "status": 'erledigt' if status == 'offen' else 'offen'
-                        }
-                        headers = HEADERS.copy(); headers["Prefer"] = "resolution=merge-duplicates"
-                        requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=headers, json=data)
-                        st.experimental_rerun()
+    # Alle Nutzer mit Rolle Admin oder Tester laden
+all_users = [u for u in get_all_users() if u["role"] in ("Admin", "Tester")]
+
+# Mapping: user_email → Liste [(testcase, status)]
+user_cases = {
+    user["email"]: get_testcases_for_week(user["email"], year, week)
+    for user in all_users
+}
+
+# Immer eine Tabelle anzeigen – auch bei leeren Daten
+cols = st.columns(len(all_users))
+for i, user in enumerate(all_users):
+    u_email = user["email"]
+    u_name = user["username"]
+    cases = user_cases[u_email]
+
+    all_done_flag = all(status == "erledigt" for _, status in cases) if cases else False
+    border = "3px solid gold" if all_done_flag else "1px solid #ccc"
+
+    with cols[i]:
+        st.markdown(f"### {u_name}")
+        if not cases:
+            st.markdown(f"<div style='border:{border}; padding:1em; border-radius:10px;'>–</div>", unsafe_allow_html=True)
+        else:
+            for tc, status in cases:
+                bg = '#fdd' if status == 'offen' else '#dfd'
+                st.markdown(f"""
+                <div style='background-color:{bg}; border:{border}; padding:1em; border-radius:10px; text-align:center;'>
+                    <strong>{tc['title']}</strong><br>
+                    <span title='{tc['tooltip']}'>ℹ️</span>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"Status wechseln {tc['id']} ({u_name})") and role != "Beobachter" and u_email == email:
+                    data = {
+                        "testcase_id": tc['id'],
+                        "user_email": email,
+                        "year": year,
+                        "calendar_week": week,
+                        "status": 'erledigt' if status == 'offen' else 'offen'
+                    }
+                    headers2 = HEADERS.copy(); headers2["Prefer"] = "resolution=merge-duplicates"
+                    requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=headers2, json=data)
+                    st.experimental_rerun()
 
 # ---------- Admin: alle Nutzer abrufen ----------
 def get_all_users():
