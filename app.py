@@ -207,10 +207,30 @@ if page == "admin" and token and email:
                         headers2 = HEADERS.copy(); headers2["Prefer"] = "return=minimal"
                         r2 = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=headers2, json=data)
                         if r2.status_code in (201, 204):
-                            st.success("Testcase gespeichert.")
-                            st.experimental_rerun()
+                            # Status-Einträge für aktuelle Woche hinzufügen
+                            week, year = get_current_week()
+                            status_entries = [
+                                {
+                                    "testcase_id": tc_id,
+                                    "user_email": e,
+                                    "year": year,
+                                    "calendar_week": week,
+                                    "status": "offen"
+                                }
+                                for e in assigned
+                            ]
+                    
+                            headers3 = HEADERS.copy()
+                            headers3["Prefer"] = "return=minimal"
+                            r3 = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=headers3, json=status_entries)
+                    
+                            if r3.status_code in (201, 204):
+                                st.success("Testcase gespeichert und für diese Woche aktiviert.")
+                                st.experimental_rerun()
+                            else:
+                                st.error("Testcase gespeichert, aber Status nicht initialisiert.")
                         else:
-                            st.error("Fehler bei Zuweisung.")
+                                st.error("Fehler bei Zuweisung.")
                     except Exception as e:
                         st.error("Testcase wurde erstellt, aber keine ID zurückgegeben.")
                 else:
