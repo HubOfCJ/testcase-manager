@@ -134,7 +134,7 @@ def get_all_users():
     return res.json() if res.status_code == 200 else []
 
 # ---------- Adminbereich ----------
-elif page == "admin" and token and email:
+if page == "admin" and token and email:
     user = get_user_profile(email)
     if not user or user.get("role") != "Admin":
         st.error("Zugriff verweigert. Adminrechte erforderlich.")
@@ -207,7 +207,7 @@ elif page == "admin" and token and email:
                     st.error("Fehler beim Speichern.")
 
 # ---------- Admin: Wochenvorschau ----------
-elif subpage == "weeks":
+if subpage == "weeks":
     st.subheader("📅 Wochenvorschau")
 
     def get_upcoming_testcases():
