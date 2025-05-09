@@ -175,7 +175,10 @@ if page == "admin" and token and email:
     elif subpage == "show":
         st.subheader("📋 Alle Testcases anzeigen")
         res = requests.get(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS)
-        st.dataframe(res.json()) if res.status_code == 200 else st.error("Fehler beim Laden.")
+        if res.status_code == 200:
+            st.dataframe(res.json())
+        else:
+            st.error("Fehler beim Laden.")
 
     elif subpage == "create":
         st.subheader("➕ Neuen Testcase anlegen")
