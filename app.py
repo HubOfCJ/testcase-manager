@@ -78,7 +78,7 @@ def all_done(testcases):
     return all(status == 'erledigt' for _, status in testcases)
 
 # ---------- Startseite ----------
-elif page == "home" and token and email:
+if page == "home" and token and email:
     user = get_user_profile(email)
     if not user:
         st.error("Benutzerprofil nicht gefunden.")
