@@ -32,70 +32,32 @@ def get_current_week():
     today = datetime.date.today()
     return today.isocalendar().week, today.isocalendar().year
 
-# ---------- Vorschau: Welche Testcases werden fällig ----------
-def get_upcoming_testcases():
-    all_cases = requests.get(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS).json()
-    assignments = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=HEADERS).json()
-    statuses = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=HEADERS).json()
+# ---------- Login-Seite ----------
+if page == "login":
+    st.title("🔐 Login zum Testcase-Manager")
+    email_input = st.text_input("E-Mail")
+    password_input = st.text_input("Passwort", type="password")
 
-    upcoming = []
-    for offset in range(1, 5):
-        target_date = datetime.date.today() + datetime.timedelta(weeks=offset)
-        kw = target_date.isocalendar().week
-        year = target_date.isocalendar().year
-        for tc in all_cases:
-            for assign in assignments:
-                if assign['testcase_id'] == tc['id']:
-                    # Letztes erledigt-Datum prüfen
-                    filtered = [s for s in statuses if s['testcase_id'] == tc['id'] and s['user_email'] == assign['user_email'] and s['status'] == 'erledigt']
-                    filtered.sort(key=lambda x: (x['year'], x['calendar_week']), reverse=True)
-                    last_year, last_kw = (filtered[0]['year'], filtered[0]['calendar_week']) if filtered else (None, None)
+    if st.button("Login"):
+        payload = {"email": email_input, "password": password_input}
+        res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
+        if res.status_code == 200:
+            data = res.json()
+            access_token = data["access_token"]
+            user_email = data["user"]["email"]
+            url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
+            st.success("Login erfolgreich! Weiterleitung...")
+            st.markdown(f"<meta http-equiv='refresh' content='0;url={url}'>", unsafe_allow_html=True)
+            st.stop()
+        else:
+            st.error("Login fehlgeschlagen. Bitte überprüfe E-Mail und Passwort.")
 
-                    def weeks_since(y1, w1, y2, w2):
-                        return (y2 - y1) * 52 + (w2 - w1)
-
-                    due = False
-                    if not last_year:
-                        due = True
-                    else:
-                        if weeks_since(last_year, last_kw, year, kw) >= tc['interval_weeks']:
-                            due = True
-
-                    if due:
-                        upcoming.append({
-                            "KW": f"{kw}/{year}",
-                            "Titel": tc['title'],
-                            "User": assign['user_email']
-                        })
-    return upcoming
-
-# ---------- Seiten: Adminbereich (Wochenvorschau) ----------
-if page == "admin" and subpage == "weeks" and token and email:
-    user = get_user_profile(email)
-    if not user or user.get("role") != "Admin":
-        st.error("Zugriff verweigert. Adminrechte erforderlich.")
-        st.stop()
-
-    st.sidebar.success(f"✅ Eingeloggt als {email}")
-    if st.sidebar.button("Zurück zum Adminmenü"):
-        st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=admin&token={token}&email={urllib.parse.quote(email)}'>", unsafe_allow_html=True)
-        st.stop()
-
-    st.title("📅 Wochenvorschau")
-    data = get_upcoming_testcases()
-
-    if not data:
-        st.info("Keine fälligen Testcases in den nächsten vier Wochen.")
-    else:
-        st.dataframe(data)
-
-# ---------- Home: Tabelle mit Kacheln je Nutzer ----------
+# ---------- Testcases für Nutzer & Woche ----------
 def get_testcases_for_week(email, year, week):
     assigned = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_assignments?user_email=eq.{email}", headers=HEADERS).json()
     all_cases = requests.get(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS).json()
     statuses = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_status?user_email=eq.{email}&year=eq.{year}&calendar_week=eq.{week}", headers=HEADERS).json()
 
-    # Filter cases for this week based on interval
     relevant = []
     for a in assigned:
         tc = next((t for t in all_cases if t['id'] == a['testcase_id']), None)
@@ -107,12 +69,15 @@ def get_testcases_for_week(email, year, week):
             last_item = sorted(last, key=lambda x: (x['year'], x['calendar_week']), reverse=True)[0]
             weeks_since = (year - last_item['year']) * 52 + (week - last_item['calendar_week'])
             if weeks_since >= tc['interval_weeks']:
-                status_now = [s for s in statuses if s['testcase_id'] == tc['id']]
-                stat = status_now[0]['status'] if status_now else 'offen'
+                stat_now = [s for s in statuses if s['testcase_id'] == tc['id']]
+                stat = stat_now[0]['status'] if stat_now else 'offen'
                 relevant.append((tc, stat))
     return relevant
 
-# In HOME-Bereich einsetzen:
+def all_done(testcases):
+    return all(status == 'erledigt' for _, status in testcases)
+
+# ---------- Startseite ----------
 elif page == "home" and token and email:
     user = get_user_profile(email)
     if not user:
@@ -124,9 +89,8 @@ elif page == "home" and token and email:
     week, year = get_current_week()
 
     st.sidebar.success(f"✅ Eingeloggt als {email}")
-    logout_url = "/?page=login"
     if st.sidebar.button("Logout"):
-        st.markdown(f"<meta http-equiv='refresh' content='0;url={logout_url}'>", unsafe_allow_html=True)
+        st.markdown("<meta http-equiv='refresh' content='0;url=/?page=login'>", unsafe_allow_html=True)
         st.stop()
 
     st.title(f"Willkommen, {username}!")
@@ -140,41 +104,6 @@ elif page == "home" and token and email:
     if not testcases:
         st.info("Keine Testcases für diese Woche zugewiesen oder fällig.")
     else:
-        cols = st.columns(len(testcases))
-        for i, (tc, status) in enumerate(testcases):
-            bg = '#fdd' if status == 'offen' else '#dfd'
-            with cols[i]:
-                with st.container():
-                    st.markdown(f"""
-                        <div style='background-color:{bg}; padding:1em; border-radius:10px; text-align:center;'>
-                            <strong>{tc['title']}</strong><br>
-                            <span title='{tc['tooltip']}'>ℹ️</span><br><br>
-                            <form action="" method="post">
-                                <button type="submit">Status wechseln</button>
-                            </form>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    if st.button(f"Status wechseln {tc['id']}") and role != "Beobachter":
-                        url = f"{SUPABASE_URL}/rest/v1/testcase_status"
-                        data = {
-                            "testcase_id": tc['id'],
-                            "user_email": email,
-                            "year": year,
-                            "calendar_week": week,
-                            "status": 'erledigt' if status == 'offen' else 'offen'
-                        }
-                        headers = HEADERS.copy(); headers["Prefer"] = "resolution=merge-duplicates"
-                        requests.post(url, headers=headers, json=data)
-                        st.experimental_rerun()
-
-# ---------- Funktion: Alle Testcases erledigt? ----------
-def all_done(testcases):
-    return all(status == 'erledigt' for _, status in testcases)
-
-# ---------- Kachel-Anzeige mit Goldrahmen ----------
-    if not testcases:
-        st.info("Keine Testcases für diese Woche zugewiesen oder fällig.")
-    else:
         border_style = "3px solid gold" if all_done(testcases) else "1px solid #ccc"
         cols = st.columns(len(testcases))
         for i, (tc, status) in enumerate(testcases):
@@ -185,13 +114,9 @@ def all_done(testcases):
                         <div style='background-color:{bg}; padding:1em; border-radius:10px; border:{border_style}; text-align:center;'>
                             <strong>{tc['title']}</strong><br>
                             <span title='{tc['tooltip']}'>ℹ️</span><br><br>
-                            <form action="" method="post">
-                                <button type="submit">Status wechseln</button>
-                            </form>
                         </div>
                     """, unsafe_allow_html=True)
                     if st.button(f"Status wechseln {tc['id']}") and role != "Beobachter":
-                        url = f"{SUPABASE_URL}/rest/v1/testcase_status"
                         data = {
                             "testcase_id": tc['id'],
                             "user_email": email,
@@ -200,5 +125,120 @@ def all_done(testcases):
                             "status": 'erledigt' if status == 'offen' else 'offen'
                         }
                         headers = HEADERS.copy(); headers["Prefer"] = "resolution=merge-duplicates"
-                        requests.post(url, headers=headers, json=data)
+                        requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=headers, json=data)
                         st.experimental_rerun()
+
+# ---------- Admin: alle Nutzer abrufen ----------
+def get_all_users():
+    res = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=email,username,role", headers=HEADERS)
+    return res.json() if res.status_code == 200 else []
+
+# ---------- Adminbereich ----------
+elif page == "admin" and token and email:
+    user = get_user_profile(email)
+    if not user or user.get("role") != "Admin":
+        st.error("Zugriff verweigert. Adminrechte erforderlich.")
+        st.stop()
+
+    st.sidebar.success(f"✅ Eingeloggt als {email}")
+    if st.sidebar.button("Logout"):
+        st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=login'>", unsafe_allow_html=True)
+        st.stop()
+
+    st.title("🔧 Adminbereich")
+
+    if not subpage:
+        st.subheader("Wähle eine Aktion")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""
+            <div style='border:1px solid #ccc; border-radius:8px; padding:1em; text-align:center;'>
+                📋<br><strong>Alle Testcases anzeigen</strong><br>
+                <a href='/?page=admin&token={token}&email={urllib.parse.quote(email)}&sub=show'>Öffnen</a>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style='border:1px solid #ccc; border-radius:8px; padding:1em; text-align:center;'>
+                ➕<br><strong>Neuen Testcase anlegen</strong><br>
+                <a href='/?page=admin&token={token}&email={urllib.parse.quote(email)}&sub=create'>Öffnen</a>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div style='border:1px solid #ccc; border-radius:8px; padding:1em; text-align:center;'>
+                📅<br><strong>Wochenvorschau</strong><br>
+                <a href='/?page=admin&token={token}&email={urllib.parse.quote(email)}&sub=weeks'>Öffnen</a>
+            </div>
+            """, unsafe_allow_html=True)
+
+    elif subpage == "show":
+        st.subheader("📋 Alle Testcases anzeigen")
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS)
+        st.dataframe(res.json()) if res.status_code == 200 else st.error("Fehler beim Laden.")
+
+    elif subpage == "create":
+        st.subheader("➕ Neuen Testcase anlegen")
+        title = st.text_input("Titel")
+        tooltip = st.text_area("Tooltip")
+        area = st.text_input("Bereich (optional)")
+        interval = st.selectbox("Intervall (in Wochen)", list(range(1, 13)))
+        userlist = [u for u in get_all_users() if u['role'] in ('Admin', 'Tester')]
+        assigned = st.multiselect("Tester zuweisen", options=[u["email"] for u in userlist],
+                                  format_func=lambda e: next(u["username"] for u in userlist if u["email"] == e))
+
+        if st.button("Speichern"):
+            if not title or not tooltip or not assigned:
+                st.warning("Bitte alle Pflichtfelder ausfüllen.")
+            else:
+                payload = {"title": title, "tooltip": tooltip, "area": area or None, "interval_weeks": interval}
+                res = requests.post(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS, json=payload)
+                if res.status_code == 201:
+                    tc_id = res.json()[0]["id"]
+                    data = [{"testcase_id": tc_id, "user_email": e} for e in assigned]
+                    headers2 = HEADERS.copy(); headers2["Prefer"] = "return=minimal"
+                    r2 = requests.post(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=headers2, json=data)
+                    if r2.status_code in (201, 204):
+                        st.success("Testcase gespeichert.")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Fehler bei Zuweisung.")
+                else:
+                    st.error("Fehler beim Speichern.")
+
+# ---------- Admin: Wochenvorschau ----------
+elif subpage == "weeks":
+    st.subheader("📅 Wochenvorschau")
+
+    def get_upcoming_testcases():
+        cases = requests.get(f"{SUPABASE_URL}/rest/v1/testcases", headers=HEADERS).json()
+        assigns = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_assignments", headers=HEADERS).json()
+        statuses = requests.get(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=HEADERS).json()
+
+        preview = []
+        for offset in range(1, 5):
+            target = datetime.date.today() + datetime.timedelta(weeks=offset)
+            kw, yr = target.isocalendar().week, target.isocalendar().year
+
+            for tc in cases:
+                for assign in [a for a in assigns if a["testcase_id"] == tc["id"]]:
+                    filtered = [s for s in statuses if s["testcase_id"] == tc["id"] and s["user_email"] == assign["user_email"] and s["status"] == "erledigt"]
+                    filtered.sort(key=lambda x: (x["year"], x["calendar_week"]), reverse=True)
+                    last_y, last_kw = (filtered[0]["year"], filtered[0]["calendar_week"]) if filtered else (None, None)
+
+                    def weeks_since(y1, w1, y2, w2):
+                        return (y2 - y1) * 52 + (w2 - w1)
+
+                    if not last_y or weeks_since(last_y, last_kw, yr, kw) >= tc["interval_weeks"]:
+                        preview.append({
+                            "Kalenderwoche": f"{kw}/{yr}",
+                            "Testcase": tc["title"],
+                            "User": assign["user_email"]
+                        })
+        return preview
+
+    table = get_upcoming_testcases()
+    if table:
+        st.dataframe(table)
+    else:
+        st.info("Keine fälligen Testcases in den nächsten 4 Wochen.")
