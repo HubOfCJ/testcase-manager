@@ -42,7 +42,7 @@ def get_status(testcase_id, user_id, week, year):
     res = requests.get(url, headers=HEADERS)
     if res.status_code == 200 and res.json():
         return res.json()[0]["status"]
-    return None
+    return "offen"
 
 # ---------- Login ----------
 if page == "login":
@@ -98,18 +98,18 @@ elif page == "home" and token and email:
                 st.markdown("–")
                 continue
             for task in assignment_map[u_id]:
-                status = get_status(task["testcase_id"], u_id, week, year)
-                if status == "offen":
+                task_info = task["testcases"]
+                current_status = get_status(task["testcase_id"], u_id, week, year)
+                if current_status == "offen":
                     color = "#fdd"
-                elif status == "erledigt":
+                elif current_status == "erledigt":
                     color = "#dfd"
                 else:
                     color = "#eee"
-
                 st.markdown(f"""
                     <div style='background-color:{color}; padding:10px; border-radius:8px; margin-bottom:10px;'>
-                        <strong>{task['testcases']['title']}</strong><br>
-                        <span title="{task['testcases']['description']}">🛈 Details</span>
+                        <strong>{task_info['title']}</strong><br>
+                        <span title="{task_info['description']}">🛈 Details</span>
                     </div>
                 """, unsafe_allow_html=True)
 
