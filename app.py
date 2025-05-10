@@ -13,16 +13,19 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Sicheren Rerun abfangen ----------
-if st.session_state.get("trigger_rerun"):
-    st.session_state["trigger_rerun"] = False
-    st.experimental_rerun()
+# ---------- Initiale Sessionwerte ----------
+if "page" not in st.session_state:
+    st.session_state["page"] = "login"
 
-# ---------- Session State nutzen statt query_params ----------
-page = st.session_state.get("page", "login")
+page = st.session_state["page"]
 token = st.session_state.get("token")
 email = st.session_state.get("email")
 user_id = st.session_state.get("user_id")
+
+# ---------- Rerun-Schutz ----------
+if st.session_state.get("trigger_rerun"):
+    st.session_state["trigger_rerun"] = False
+    st.experimental_rerun()
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -58,7 +61,7 @@ def toggle_status(testcase_id, user_id, week, year, current_status):
     requests.patch(url, headers=headers, json=payload)
 
 # ---------- Login ----------
-if "email" not in st.session_state:
+if page == "login":
     st.title("🔐 Login zum Testcase-Manager")
     email_input = st.text_input("E-Mail")
     password_input = st.text_input("Passwort", type="password")
@@ -75,13 +78,12 @@ if "email" not in st.session_state:
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
-                st.markdown("<meta http-equiv='refresh' content='0;url=/?page=home'>", unsafe_allow_html=True)
-                st.stop()
+                st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
 # ---------- Startseite ----------
-elif st.session_state.get("page") == "home" and email:
+elif page == "home" and email:
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
