@@ -12,8 +12,10 @@ HEADERS = {
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json"
 }
-if st.session_state.get("rerun"):
-    st.session_state["rerun"] = False
+
+# ---------- Rerun nach Statusänderung ----------
+if st.session_state.get("trigger_rerun"):
+    st.session_state["trigger_rerun"] = False
     st.experimental_rerun()
 
 # ---------- URL Parameter ----------
@@ -122,7 +124,7 @@ elif page == "home" and token and email:
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
-                        st.session_state["rerun"] = True
+                        st.session_state["trigger_rerun"] = True
                     with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
 
