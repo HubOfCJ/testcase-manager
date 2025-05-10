@@ -106,12 +106,12 @@ elif page == "home" and token and email:
                     color = "#dfd"
                 else:
                     color = "#eee"
-                st.markdown(f"""
-                    <div style='background-color:{color}; padding:10px; border-radius:8px; margin-bottom:10px;'>
-                        <strong>{task_info['title']}</strong><br>
-                        <span title="{task_info['description']}">🛈 Details</span>
-                    </div>
-                """, unsafe_allow_html=True)
+                with st.container():
+                    st.markdown(f"<div style='background-color:{color}; padding:10px; border-radius:8px;'>", unsafe_allow_html=True)
+                    st.markdown(f"**{task_info['title']}**")
+                    with st.expander("🛈 Details anzeigen"):
+                        st.markdown(task_info["description"])
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.warning("Bitte neu einloggen.")
