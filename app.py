@@ -22,10 +22,10 @@ token = st.session_state.get("token")
 email = st.session_state.get("email")
 user_id = st.session_state.get("user_id")
 
-# ---------- Rerun-Schutz ----------
+# ---------- Sicherer Rerun über st.stop() ----------
 if st.session_state.get("trigger_rerun"):
     st.session_state["trigger_rerun"] = False
-    st.experimental_rerun()
+    st.stop()
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -78,7 +78,7 @@ if page == "login":
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
-                st.experimental_rerun()
+                st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
