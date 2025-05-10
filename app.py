@@ -13,6 +13,12 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# ---------- Sicherer Refresh über Meta-Refresh ----------
+if st.session_state.get("trigger_rerun"):
+    st.session_state["trigger_rerun"] = False
+    st.markdown("<meta http-equiv='refresh' content='0;url=/' />", unsafe_allow_html=True)
+    st.stop()
+
 # ---------- Initiale Sessionwerte ----------
 if "page" not in st.session_state:
     st.session_state["page"] = "login"
@@ -21,11 +27,6 @@ page = st.session_state["page"]
 token = st.session_state.get("token")
 email = st.session_state.get("email")
 user_id = st.session_state.get("user_id")
-
-# ---------- Sicherer Rerun über st.stop() ----------
-if st.session_state.get("trigger_rerun"):
-    st.session_state["trigger_rerun"] = False
-    st.stop()
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -78,6 +79,7 @@ if page == "login":
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
+                st.markdown("<meta http-equiv='refresh' content='0;url=/' />", unsafe_allow_html=True)
                 st.stop()
         else:
             st.error("Login fehlgeschlagen.")
