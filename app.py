@@ -44,6 +44,19 @@ def get_status(testcase_id, user_id, week, year):
         return res.json()[0]["status"]
     return "offen"
 
+def toggle_status(testcase_id, user_id, week, year, current_status):
+    new_status = "erledigt" if current_status == "offen" else "offen"
+    data = {
+        "testcase_id": testcase_id,
+        "user_id": user_id,
+        "year": year,
+        "calendar_week": week,
+        "status": new_status
+    }
+    h = HEADERS.copy()
+    h["Prefer"] = "resolution=merge-duplicates"
+    requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=h, json=data)
+
 # ---------- Login ----------
 if page == "login":
     st.title("🔐 Login zum Testcase-Manager")
@@ -100,18 +113,20 @@ elif page == "home" and token and email:
             for task in assignment_map[u_id]:
                 task_info = task["testcases"]
                 current_status = get_status(task["testcase_id"], u_id, week, year)
-                if current_status == "offen":
-                    color = "#fdd"
-                elif current_status == "erledigt":
-                    color = "#dfd"
-                else:
-                    color = "#eee"
-                with st.container():
-                    st.markdown(f"<div style='background-color:{color}; padding:10px; border-radius:8px;'>", unsafe_allow_html=True)
-                    st.markdown(f"**{task_info['title']}**")
-                    with st.expander("🛈 Details anzeigen"):
+                color = "#fdd" if current_status == "offen" else "#dfd" if current_status == "erledigt" else "#eee"
+                key = f"{task['testcase_id']}-{u_id}"
+                with st.form(key=key):
+                    st.markdown(f"""
+                        <button type='submit' style='width:100%; border:none; background-color:{color}; padding:12px; border-radius:8px; cursor:pointer;'>
+                            <strong>{task_info['title']}</strong><br>
+                            <span style='font-size: 12px;'>🛈 Beschreibung anzeigen</span>
+                        </button>
+                    """, unsafe_allow_html=True)
+                    if st.form_submit_button(" "):
+                        toggle_status(task["testcase_id"], u_id, week, year, current_status)
+                        st.experimental_rerun()
+                    with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
-                    st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.warning("Bitte neu einloggen.")
