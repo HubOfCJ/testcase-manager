@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import urllib.parse
 import datetime
-import pandas as pd
 
 # ---------- Supabase Zugang ----------
 SUPABASE_URL = st.secrets["supabase_url"]
@@ -21,7 +20,7 @@ token = params.get("token", None)
 email = params.get("email", None)
 
 # ---------- Hilfsfunktionen ----------
-def get_current_week():
+def get_current_week_and_year():
     today = datetime.date.today()
     return today.isocalendar().week, today.isocalendar().year
 
@@ -30,33 +29,20 @@ def get_user_profile(email):
     return res.json()[0] if res.status_code == 200 and res.json() else None
 
 def get_all_users():
-    res = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=email,username,role", headers=HEADERS)
+    res = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=id,username,email", headers=HEADERS)
     return res.json() if res.status_code == 200 else []
 
-def get_scheduled_testcases(week, year):
-    url = f"{SUPABASE_URL}/rest/v1/testcase_schedule?calendar_week=eq.{week}&year=eq.{year}&select=testcase_id,user_email,testcases(id,title,tooltip)"
+def get_assignments_for_week(week, year):
+    url = f"{SUPABASE_URL}/rest/v1/testcase_assignments?calendar_week=eq.{week}&year=eq.{year}&select=*,testcases(id,title,description)"
     res = requests.get(url, headers=HEADERS)
     return res.json() if res.status_code == 200 else []
 
-def get_status(tc_id, user_email, week, year):
-    url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{tc_id}&user_email=eq.{user_email}&calendar_week=eq.{week}&year=eq.{year}"
+def get_status(testcase_id, user_id, week, year):
+    url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{testcase_id}&user_id=eq.{user_id}&calendar_week=eq.{week}&year=eq.{year}"
     res = requests.get(url, headers=HEADERS)
     if res.status_code == 200 and res.json():
         return res.json()[0]["status"]
-    return "offen"
-
-def toggle_status(tc_id, user_email, week, year, current_status):
-    new_status = "erledigt" if current_status == "offen" else "offen"
-    data = {
-        "testcase_id": tc_id,
-        "user_email": user_email,
-        "year": year,
-        "calendar_week": week,
-        "status": new_status
-    }
-    h = HEADERS.copy()
-    h["Prefer"] = "resolution=merge-duplicates"
-    requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=h, json=data)
+    return None
 
 # ---------- Login ----------
 if page == "login":
@@ -84,48 +70,48 @@ elif page == "home" and token and email:
         st.error("Benutzer nicht gefunden.")
         st.stop()
 
-    week, year = get_current_week()
-    st.title(f"Testcases – KW {week}")
+    week, year = get_current_week_and_year()
+    st.title(f"Kalenderwoche {week}")
 
-    users = [u for u in get_all_users() if u["role"] in ("Tester", "Admin")]
-    scheduled = get_scheduled_testcases(week, year)
+    users = get_all_users()
+    assignments = get_assignments_for_week(week, year)
 
-    # Gruppieren nach Testcase ID
-    testcase_map = {}
-    for item in scheduled:
-        tc_id = item["testcase_id"]
-        if tc_id not in testcase_map:
-            testcase_map[tc_id] = {
-                "title": item["testcases"]["title"],
-                "tooltip": item["testcases"]["tooltip"],
-                "users": {}
-            }
-        testcase_map[tc_id]["users"][item["user_email"]] = item["testcases"]["id"]
+    if not users:
+        st.info("Noch keine Nutzer vorhanden.")
+        st.stop()
 
-    header = [u["username"] for u in users]
-    data = []
-    for tc_id, content in testcase_map.items():
-        row = [content["title"]]
-        for u in users:
-            u_email = u["email"]
-            status = get_status(tc_id, u_email, week, year)
-            label = "✅" if status == "erledigt" else "⛔"
-            color = "#dfd" if status == "erledigt" else "#fdd"
-            is_active = u_email == email
-            if u_email in content["users"]:
-                if st.button(f"{label} ({tc_id})", key=f"{tc_id}-{u_email}") and is_active:
-                    toggle_status(tc_id, u_email, week, year, status)
-                    st.experimental_rerun()
-                row.append(f"{label}")
-            else:
-                row.append("–")
-        data.append(row)
+    user_map = {u["id"]: u for u in users}
+    assignment_map = {}
+    for item in assignments:
+        user_id = item["user_id"]
+        if user_id not in assignment_map:
+            assignment_map[user_id] = []
+        assignment_map[user_id].append(item)
 
-    col_headers = ["Testcase"] + header
-    st.markdown("### Geplante Testcases")
-    st.markdown("<style>td, th {text-align: center !important;}</style>", unsafe_allow_html=True)
-    df = pd.DataFrame(data, columns=col_headers)
-    st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    cols = st.columns(len(users))
+    for i, user in enumerate(users):
+        u_id = user["id"]
+        u_name = user["username"]
+        with cols[i]:
+            st.markdown(f"**{u_name}**")
+            if u_id not in assignment_map:
+                st.markdown("–")
+                continue
+            for task in assignment_map[u_id]:
+                status = get_status(task["testcase_id"], u_id, week, year)
+                if status == "offen":
+                    color = "#fdd"
+                elif status == "erledigt":
+                    color = "#dfd"
+                else:
+                    color = "#eee"
+
+                st.markdown(f"""
+                    <div style='background-color:{color}; padding:10px; border-radius:8px; margin-bottom:10px;'>
+                        <strong>{task['testcases']['title']}</strong><br>
+                        <span title="{task['testcases']['description']}">🛈 Details</span>
+                    </div>
+                """, unsafe_allow_html=True)
 
 else:
     st.warning("Bitte neu einloggen.")
