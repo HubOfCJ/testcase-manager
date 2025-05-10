@@ -13,22 +13,16 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Session vorbereiten ----------
-if "email" in st.session_state:
-    email = st.session_state["email"]
-    token = st.session_state.get("token")
-    user_id = st.session_state.get("user_id")
-else:
-    params = st.query_params
-    page = params.get("page", "login")
-    token = params.get("token", None)
-    email = params.get("email", None)
-    user_id = None
-
-# ---------- Rerun sicher auslösen ----------
+# ---------- Sicheren Rerun abfangen ----------
 if st.session_state.get("trigger_rerun"):
     st.session_state["trigger_rerun"] = False
     st.experimental_rerun()
+
+# ---------- Session State nutzen statt query_params ----------
+page = st.session_state.get("page", "login")
+token = st.session_state.get("token")
+email = st.session_state.get("email")
+user_id = st.session_state.get("user_id")
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -80,12 +74,13 @@ if "email" not in st.session_state:
                 st.session_state["token"] = access_token
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
+                st.session_state["page"] = "home"
                 st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
 # ---------- Startseite ----------
-elif "email" in st.session_state:
+elif st.session_state.get("page") == "home" and email:
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
@@ -132,7 +127,7 @@ elif "email" in st.session_state:
                         st.markdown(task_info["description"])
 
     if st.button("Logout"):
-        for key in ["email", "token", "user_id"]:
+        for key in ["email", "token", "user_id", "page"]:
             st.session_state.pop(key, None)
         st.experimental_rerun()
 
