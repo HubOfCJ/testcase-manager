@@ -126,7 +126,7 @@ elif page == "home" and token and email:
                         </button>
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
-                        toggle_status(...)
+                        toggle_status(task["testcase_id"], u_id, week, year, current_status)
                         st.session_state["rerun"] = True
                     with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
