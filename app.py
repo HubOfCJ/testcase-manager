@@ -13,17 +13,22 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Rerun nach Statusänderung ----------
-if "trigger_rerun" in st.session_state and st.session_state["trigger_rerun"]:
-    st.session_state["trigger_rerun"] = False
-    st.stop()  # beendet diesen Durchlauf sofort
-    st.experimental_rerun()  # wird beim nächsten Start sicher ausgeführt
+# ---------- Session vorbereiten ----------
+if "email" in st.session_state:
+    email = st.session_state["email"]
+    token = st.session_state.get("token")
+    user_id = st.session_state.get("user_id")
+else:
+    params = st.query_params
+    page = params.get("page", "login")
+    token = params.get("token", None)
+    email = params.get("email", None)
+    user_id = None
 
-# ---------- URL Parameter ----------
-params = st.query_params
-page = params.get("page", "login")
-token = params.get("token", None)
-email = params.get("email", None)
+# ---------- Rerun sicher auslösen ----------
+if st.session_state.get("trigger_rerun"):
+    st.session_state["trigger_rerun"] = False
+    st.experimental_rerun()
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -59,7 +64,7 @@ def toggle_status(testcase_id, user_id, week, year, current_status):
     requests.patch(url, headers=headers, json=payload)
 
 # ---------- Login ----------
-if page == "login":
+if "email" not in st.session_state:
     st.title("🔐 Login zum Testcase-Manager")
     email_input = st.text_input("E-Mail")
     password_input = st.text_input("Passwort", type="password")
@@ -70,20 +75,17 @@ if page == "login":
             data = res.json()
             access_token = data["access_token"]
             user_email = data["user"]["email"]
-            url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
-            st.success("Login erfolgreich! Weiterleitung...")
-            st.markdown(f"<meta http-equiv='refresh' content='0;url={url}'>", unsafe_allow_html=True)
-            st.stop()
+            profile = get_user_profile(user_email)
+            if profile:
+                st.session_state["token"] = access_token
+                st.session_state["email"] = user_email
+                st.session_state["user_id"] = profile["id"]
+                st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
 # ---------- Startseite ----------
-elif page == "home" and token and email:
-    profile = get_user_profile(email)
-    if not profile:
-        st.error("Benutzer nicht gefunden.")
-        st.stop()
-
+elif "email" in st.session_state:
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
@@ -129,7 +131,10 @@ elif page == "home" and token and email:
                     with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
 
+    if st.button("Logout"):
+        for key in ["email", "token", "user_id"]:
+            st.session_state.pop(key, None)
+        st.experimental_rerun()
+
 else:
-    st.warning("Bitte neu einloggen.")
-    st.markdown("<meta http-equiv='refresh' content='0;url=/?page=login'>", unsafe_allow_html=True)
-    st.stop()
+    st.warning("Bitte einloggen.")
