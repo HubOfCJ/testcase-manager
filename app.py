@@ -49,16 +49,11 @@ def get_status(testcase_id, user_id, week, year):
 
 def toggle_status(testcase_id, user_id, week, year, current_status):
     new_status = "erledigt" if current_status == "offen" else "offen"
-    data = {
-        "testcase_id": testcase_id,
-        "user_id": user_id,
-        "year": year,
-        "calendar_week": week,
-        "status": new_status
-    }
-    h = HEADERS.copy()
-    h["Prefer"] = "resolution=merge-duplicates"
-    requests.post(f"{SUPABASE_URL}/rest/v1/testcase_status", headers=h, json=data)
+    url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{testcase_id}&user_id=eq.{user_id}&calendar_week=eq.{week}&year=eq.{year}"
+    headers = HEADERS.copy()
+    headers["Prefer"] = "return=minimal"
+    payload = { "status": new_status }
+    requests.patch(url, headers=headers, json=payload)
 
 # ---------- Login ----------
 if page == "login":
