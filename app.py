@@ -75,6 +75,7 @@ if "email" not in st.session_state:
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
+                st.markdown("<meta http-equiv='refresh' content='0;url=/?page=home'>", unsafe_allow_html=True)
                 st.stop()
         else:
             st.error("Login fehlgeschlagen.")
