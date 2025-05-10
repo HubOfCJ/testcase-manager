@@ -14,9 +14,10 @@ HEADERS = {
 }
 
 # ---------- Rerun nach Statusänderung ----------
-if st.session_state.get("trigger_rerun"):
+if "trigger_rerun" in st.session_state and st.session_state["trigger_rerun"]:
     st.session_state["trigger_rerun"] = False
-    st.experimental_rerun()
+    st.stop()  # beendet diesen Durchlauf sofort
+    st.experimental_rerun()  # wird beim nächsten Start sicher ausgeführt
 
 # ---------- URL Parameter ----------
 params = st.query_params
