@@ -75,7 +75,7 @@ if "email" not in st.session_state:
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
-                st.experimental_rerun()
+                st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
