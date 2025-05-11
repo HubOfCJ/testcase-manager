@@ -13,15 +13,19 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# ---------- Rerun-Flag ----------
 if st.session_state.get("trigger_rerun"):
     st.session_state["trigger_rerun"] = False
     st.experimental_rerun()
 
-# ---------- URL Parameter ----------
-params = st.query_params
-page = params.get("page", "login")
-token = params.get("token", None)
-email = params.get("email", None)
+# ---------- Sessionstart ----------
+if "page" not in st.session_state:
+    st.session_state["page"] = "login"
+
+page = st.session_state["page"]
+email = st.session_state.get("email")
+token = st.session_state.get("token")
+user_id = st.session_state.get("user_id")
 
 # ---------- Hilfsfunktionen ----------
 def get_current_week_and_year():
@@ -53,7 +57,7 @@ def toggle_status(testcase_id, user_id, week, year, current_status):
     url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{testcase_id}&user_id=eq.{user_id}&calendar_week=eq.{week}&year=eq.{year}"
     headers = HEADERS.copy()
     headers["Prefer"] = "return=minimal"
-    payload = { "status": new_status }
+    payload = {"status": new_status}
     requests.patch(url, headers=headers, json=payload)
 
 # ---------- Login ----------
@@ -71,20 +75,18 @@ if page == "login":
                 st.stop()
             access_token = data["access_token"]
             user_email = data["user"]["email"]
-            url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
-            st.success("Login erfolgreich! Weiterleitung...")
-            st.session_state["trigger_rerun"] = True
-            st.stop()
+            profile = get_user_profile(user_email)
+            if profile:
+                st.session_state["token"] = access_token
+                st.session_state["email"] = user_email
+                st.session_state["user_id"] = profile["id"]
+                st.session_state["page"] = "home"
+                st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
 # ---------- Startseite ----------
-elif page == "home" and token and email:
-    profile = get_user_profile(email)
-    if not profile:
-        st.error("Benutzer nicht gefunden.")
-        st.stop()
-
+elif page == "home" and email:
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
@@ -127,9 +129,13 @@ elif page == "home" and token and email:
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
                         st.session_state["trigger_rerun"] = True
-            st.stop()
-                    with st.expander("Beschreibung anzeigen"):
-                        st.markdown(task_info["description"])
+                with st.expander("🛈 Beschreibung anzeigen"):
+                    st.markdown(task_info["description"])
+
+    if st.button("Logout"):
+        for key in ["email", "token", "user_id", "page"]:
+            st.session_state.pop(key, None)
+        st.experimental_rerun()
 
 else:
     st.warning("Bitte einloggen.")
