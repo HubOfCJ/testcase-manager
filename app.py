@@ -71,17 +71,11 @@ if page == "login":
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             data = res.json()
-            if "access_token" not in data or "user" not in data:
-                st.error("Login erfolgreich, aber Zugriffstoken oder Benutzerinfo fehlen.")
-                st.stop()
-            access_token = data["access_token"]
-            user_email = data["user"]["email"]
-            profile = get_user_profile(user_email)
-            if profile:
-                st.session_state["token"] = access_token
-                st.session_state["email"] = user_email
-                st.session_state["user_id"] = profile["id"]
-                st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=home&email={urllib.parse.quote(user_email)}' />", unsafe_allow_html=True)
+            if "access_token" in data and "user" in data:
+                access_token = data["access_token"]
+                user_email = data["user"]["email"]
+                url = f"/?page=home&email={urllib.parse.quote(user_email)}"
+                st.markdown(f"<meta http-equiv='refresh' content='0;url={url}' />", unsafe_allow_html=True)
                 st.stop()
         else:
             st.error("Login fehlgeschlagen.")
