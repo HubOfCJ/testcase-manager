@@ -128,7 +128,7 @@ elif page == "home" and token and email:
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
                         st.session_state["trigger_rerun"] = True
             st.stop()
-                    with st.expander("🛈 Beschreibung anzeigen"):
+                    with st.expander("Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
 
 else:
