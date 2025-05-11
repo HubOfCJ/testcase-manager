@@ -3,7 +3,7 @@ import requests
 import urllib.parse
 import datetime
 
-# ---------- Supabase Zugang ----------
+# Supabase-Zugang
 SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_key"]
 AUTH_ENDPOINT = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
@@ -13,22 +13,15 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ---------- Rerun-Flag ----------
-if st.session_state.get("trigger_rerun"):
-    st.session_state["trigger_rerun"] = False
-    st.experimental_rerun()
+# Sessioninitialisierung
+if "page" not in st.session_state:
+    st.session_state["page"] = "login"
 
-# ---------- Sessionstart ----------
-params = st.query_params
-page = params.get("page", "login")
-email = params.get("email", None)
-token = None
-user_id = None
+page = st.session_state["page"]
 email = st.session_state.get("email")
-token = st.session_state.get("token")
 user_id = st.session_state.get("user_id")
 
-# ---------- Hilfsfunktionen ----------
+# Hilfsfunktionen
 def get_current_week_and_year():
     today = datetime.date.today()
     return today.isocalendar().week, today.isocalendar().year
@@ -58,10 +51,10 @@ def toggle_status(testcase_id, user_id, week, year, current_status):
     url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{testcase_id}&user_id=eq.{user_id}&calendar_week=eq.{week}&year=eq.{year}"
     headers = HEADERS.copy()
     headers["Prefer"] = "return=minimal"
-    payload = {"status": new_status}
+    payload = { "status": new_status }
     requests.patch(url, headers=headers, json=payload)
 
-# ---------- Login ----------
+# Login
 if page == "login":
     st.title("🔐 Login zum Testcase-Manager")
     email_input = st.text_input("E-Mail")
@@ -71,19 +64,21 @@ if page == "login":
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             data = res.json()
-            if "access_token" in data and "user" in data:
-                access_token = data["access_token"]
-                user_email = data["user"]["email"]
-                url = f"/?page=home&email={urllib.parse.quote(user_email)}"
-                st.markdown(f"<meta http-equiv='refresh' content='0;url={url}' />", unsafe_allow_html=True)
+            if "access_token" not in data or "user" not in data:
+                st.error("Login erfolgreich, aber Zugriffstoken oder Benutzerinfo fehlen.")
                 st.stop()
+            user_email = data["user"]["email"]
+            profile = get_user_profile(user_email)
+            if profile:
+                st.session_state["email"] = user_email
+                st.session_state["user_id"] = profile["id"]
+                st.session_state["page"] = "home"
+                st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
-# ---------- Startseite ----------
+# Startseite
 elif page == "home" and email:
-    st.write("DEBUG – Seite:", page)
-    st.write("DEBUG – E-Mail aus query_params:", email)
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
@@ -125,12 +120,12 @@ elif page == "home" and email:
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
-                        st.session_state["trigger_rerun"] = True
+                        st.experimental_rerun()
                 with st.expander("🛈 Beschreibung anzeigen"):
                     st.markdown(task_info["description"])
 
     if st.button("Logout"):
-        for key in ["email", "token", "user_id", "page"]:
+        for key in ["email", "user_id", "page"]:
             st.session_state.pop(key, None)
         st.experimental_rerun()
 
