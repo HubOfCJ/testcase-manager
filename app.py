@@ -66,8 +66,7 @@ if page == "login":
             user_email = data["user"]["email"]
             url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
             st.success("Login erfolgreich! Weiterleitung...")
-            st.markdown(f"<meta http-equiv='refresh' content='0;url={url}'>", unsafe_allow_html=True)
-            st.stop()
+            st.experimental_rerun()
         else:
             st.error("Login fehlgeschlagen.")
 
@@ -119,8 +118,7 @@ elif page == "home" and token and email:
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
-                        st.markdown("<meta http-equiv='refresh' content='0;url=/' />", unsafe_allow_html=True)
-                        st.stop()
+                        st.experimental_rerun()
                     with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
 
