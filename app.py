@@ -109,10 +109,11 @@ elif page == "home" and email:
                 key = f"{task['testcase_id']}-{u_id}"
                 with st.form(key=key):
                     st.markdown(f"""
-                        <div style='background-color:{color}; padding:12px; border-radius:8px; text-align:center;'>
-                            <strong>{task_info['title']}</strong>
-                        </div>
-                        <button type='submit' style='width:100%; height:1px; opacity:0; border:none;'>.</button>
+                        <button type='submit' style='width:100%; border:none; background-color:{color}; padding:12px; border-radius:8px; cursor:pointer;'>
+                            <strong>{task_info['title']}</strong><br>
+                            
+                        </button>
+                    <div style='font-size: 12px; text-align: center; margin-top: 4px;'>Test als {'beendet' if current_status == 'offen' else 'offen'} markieren</div>
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
