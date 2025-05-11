@@ -81,7 +81,8 @@ if page == "login":
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
                 st.session_state["page"] = "home"
-                st.experimental_rerun()
+                st.markdown("<meta http-equiv='refresh' content='0;url=/' />", unsafe_allow_html=True)
+                st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
