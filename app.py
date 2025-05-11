@@ -117,7 +117,7 @@ elif page == "home" and email:
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
                         st.experimental_rerun()
-                with st.expander("🛈 Beschreibung anzeigen"):
+                with st.expander("Beschreibung anzeigen"):
                     st.markdown(task_info["description"])
 
 else:
