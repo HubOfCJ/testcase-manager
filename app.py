@@ -66,6 +66,9 @@ if page == "login":
         res = requests.post(AUTH_ENDPOINT, headers=HEADERS, json=payload)
         if res.status_code == 200:
             data = res.json()
+            if "access_token" not in data or "user" not in data:
+                st.error("Login erfolgreich, aber Zugriffstoken oder Benutzerinfo fehlen.")
+                st.stop()
             access_token = data["access_token"]
             user_email = data["user"]["email"]
             url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
