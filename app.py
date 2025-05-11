@@ -109,9 +109,8 @@ elif page == "home" and email:
                 key = f"{task['testcase_id']}-{u_id}"
                 with st.form(key=key):
                     st.markdown(f"""
-                        <button type='submit' style='width:100%; border:none; background-color:{color}; padding:12px; border-radius:8px; cursor:pointer;'>
-                            <strong>{task_info['title']}</strong><br>
-                            <span style='font-size: 12px;'>🛈 Beschreibung anzeigen</span>
+                        <button type='submit' style='...'>
+                            <strong>{task_info['title']}</strong>
                         </button>
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
