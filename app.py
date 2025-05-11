@@ -19,10 +19,11 @@ if st.session_state.get("trigger_rerun"):
     st.experimental_rerun()
 
 # ---------- Sessionstart ----------
-if "email" not in st.session_state:
-    page = "login"
-else:
-    page = "home"
+params = st.query_params
+page = params.get("page", "login")
+email = params.get("email", None)
+token = None
+user_id = None
 email = st.session_state.get("email")
 token = st.session_state.get("token")
 user_id = st.session_state.get("user_id")
@@ -80,8 +81,8 @@ if page == "login":
                 st.session_state["token"] = access_token
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
-                st.session_state["page"] = "home"
-                st.experimental_rerun()
+                st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=home&email={urllib.parse.quote(user_email)}" />", unsafe_allow_html=True)
+                st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
@@ -133,7 +134,7 @@ elif page == "home" and email:
                     st.markdown(task_info["description"])
 
     if st.button("Logout"):
-        for key in ["email", "token", "user_id"]:
+        for key in ["email", "token", "user_id", "page"]:
             st.session_state.pop(key, None)
         st.experimental_rerun()
 
