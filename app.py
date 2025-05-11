@@ -13,6 +13,10 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+if st.session_state.get("trigger_rerun"):
+    st.session_state["trigger_rerun"] = False
+    st.experimental_rerun()
+
 # ---------- URL Parameter ----------
 params = st.query_params
 page = params.get("page", "login")
@@ -66,7 +70,8 @@ if page == "login":
             user_email = data["user"]["email"]
             url = f"/?page=home&token={access_token}&email={urllib.parse.quote(user_email)}"
             st.success("Login erfolgreich! Weiterleitung...")
-            st.experimental_rerun()
+            st.session_state["trigger_rerun"] = True
+            st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
@@ -118,7 +123,8 @@ elif page == "home" and token and email:
                     """, unsafe_allow_html=True)
                     if st.form_submit_button(" "):
                         toggle_status(task["testcase_id"], u_id, week, year, current_status)
-                        st.experimental_rerun()
+                        st.session_state["trigger_rerun"] = True
+            st.stop()
                     with st.expander("🛈 Beschreibung anzeigen"):
                         st.markdown(task_info["description"])
 
