@@ -81,7 +81,7 @@ if page == "login":
                 st.session_state["token"] = access_token
                 st.session_state["email"] = user_email
                 st.session_state["user_id"] = profile["id"]
-                st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=home&email={urllib.parse.quote(user_email)}" />", unsafe_allow_html=True)
+                st.markdown(f"<meta http-equiv='refresh' content='0;url=/?page=home&email={urllib.parse.quote(user_email)}' />", unsafe_allow_html=True)
                 st.stop()
         else:
             st.error("Login fehlgeschlagen.")
