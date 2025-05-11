@@ -82,8 +82,8 @@ if page == "login":
 
 # ---------- Startseite ----------
 elif page == "home" and email:
-    st.write("Aktive Seite:", page)
-    st.write("Erkannte E-Mail:", email)
+    st.write("DEBUG – Seite:", page)
+    st.write("DEBUG – E-Mail aus query_params:", email)
     week, year = get_current_week_and_year()
     st.title(f"Kalenderwoche {week}")
 
