@@ -13,13 +13,12 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# Sessioninitialisierung
-if "page" not in st.session_state:
-    st.session_state["page"] = "login"
-
-page = st.session_state["page"]
-email = st.session_state.get("email")
-user_id = st.session_state.get("user_id")
+# Query-basiertes Routing
+params = st.query_params
+page = params.get("page", "login")
+email = params.get("email", None)
+token = None
+user_id = None
 
 # Hilfsfunktionen
 def get_current_week_and_year():
@@ -51,7 +50,7 @@ def toggle_status(testcase_id, user_id, week, year, current_status):
     url = f"{SUPABASE_URL}/rest/v1/testcase_status?testcase_id=eq.{testcase_id}&user_id=eq.{user_id}&calendar_week=eq.{week}&year=eq.{year}"
     headers = HEADERS.copy()
     headers["Prefer"] = "return=minimal"
-    payload = { "status": new_status }
+    payload = {"status": new_status}
     requests.patch(url, headers=headers, json=payload)
 
 # Login
@@ -68,12 +67,9 @@ if page == "login":
                 st.error("Login erfolgreich, aber Zugriffstoken oder Benutzerinfo fehlen.")
                 st.stop()
             user_email = data["user"]["email"]
-            profile = get_user_profile(user_email)
-            if profile:
-                st.session_state["email"] = user_email
-                st.session_state["user_id"] = profile["id"]
-                st.session_state["page"] = "home"
-                st.experimental_rerun()
+            url = f"/?page=home&email={urllib.parse.quote(user_email)}"
+            st.markdown(f"<meta http-equiv='refresh' content='0;url={url}' />", unsafe_allow_html=True)
+            st.stop()
         else:
             st.error("Login fehlgeschlagen.")
 
@@ -123,11 +119,6 @@ elif page == "home" and email:
                         st.experimental_rerun()
                 with st.expander("🛈 Beschreibung anzeigen"):
                     st.markdown(task_info["description"])
-
-    if st.button("Logout"):
-        for key in ["email", "user_id", "page"]:
-            st.session_state.pop(key, None)
-        st.experimental_rerun()
 
 else:
     st.warning("Bitte einloggen.")
